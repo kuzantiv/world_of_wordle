@@ -1,0 +1,6 @@
+logging
+collections
+enum
+wikipedia
+PIL
+aiogram
