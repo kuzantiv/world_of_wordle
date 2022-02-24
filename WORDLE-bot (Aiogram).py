@@ -1,4 +1,4 @@
-import logging
+# import logging
 from collections import Counter
 from enum import Enum
 
@@ -9,7 +9,7 @@ from aiogram import Bot, Dispatcher, executor, types
 import config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 # Initialize bot and dispatcher
 bot = Bot(token=config.API_TOKEN)
