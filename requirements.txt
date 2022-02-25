@@ -1,3 +1,3 @@
 wikipedia
-PIL
+PIL = 9.0.1
 aiogram
