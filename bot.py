@@ -1,4 +1,5 @@
-# import logging
+import logging
+import random
 from collections import Counter
 from enum import Enum
 
@@ -9,14 +10,14 @@ from aiogram import Bot, Dispatcher, executor, types
 import config
 
 # Configure logging
-# logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 # Initialize bot and dispatcher
 bot = Bot(token=config.API_TOKEN)
 dp = Dispatcher(bot)
 
-# CHAT_ID = -1001741490206  # ПИЗДЮШНЯ
-CHAT_ID = -614450004  # ТЕСТ ЧАТ
+CHAT_ID = -1001741490206  # ПИЗДЮШНЯ
+# CHAT_ID = -614450004  # ТЕСТ ЧАТ
 word = ""
 initial_tries = 6
 tries = initial_tries
@@ -36,24 +37,24 @@ keyboard = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
 dicty = {}
 
 
-def draw_grid(secret_word, guessed_words):
-    global initial_tries
-    new_line = '\n'
-    delimiter = "-----" * len(secret_word)
-    delimiter = delimiter[:-3]
-    grid = f"{delimiter}{new_line}"
-    for i in range(initial_tries):
-        row = "|"
-        # w = ""
-        if i >= len(guessed_words):
-            w = " " * 5
-        else:
-            w = guessed_words[i]
-
-        for c in w:
-            row += f" {c.upper()} |"
-        grid += f"{row}{new_line}{delimiter}{new_line}"
-    return grid
+# def draw_grid(secret_word, guessed_words):
+#     global initial_tries
+#     new_line = '\n'
+#     delimiter = "-----" * len(secret_word)
+#     delimiter = delimiter[:-3]
+#     grid = f"{delimiter}{new_line}"
+#     for i in range(initial_tries):
+#         row = "|"
+#         # w = ""
+#         if i >= len(guessed_words):
+#             w = " " * 5
+#         else:
+#             w = guessed_words[i]
+#
+#         for c in w:
+#             row += f" {c.upper()} |"
+#         grid += f"{row}{new_line}{delimiter}{new_line}"
+#     return grid
 
 
 def tip(secret_word, guessed_word):
@@ -74,45 +75,68 @@ def tip(secret_word, guessed_word):
 # the picture of guess history and the keyboard
 
 def send_picture(guesses_text, keyboard_text):
-    img = Image.new('RGBA', (600, 400), 'black')
+    img = Image.new('RGBA', (500, 300), 'black')
     idraw = ImageDraw.Draw(img)
-    headline = ImageFont.truetype('arial.ttf', size=20)
-    idraw.text((50, 50), guesses_text, font=headline)
+    font_keyboard = ImageFont.truetype('RubikMonoOne-Regular.ttf', size=20)
+    font_grid = ImageFont.truetype('cour.ttf', size=30)
+    delimiter = "--------"
 
-    # delimiter = ""
+    grid_height = 65
+    grid_width = 60
+    ad_pix_grid = 30
+    for item in guesses_text:
+        idraw.text((grid_width, grid_height - 15), delimiter, font=font_grid)
+        for letter in item:
+            if letter in dicty:
+                if dicty[letter] == Hint.CORRECT:
+                    idraw.text((grid_width, grid_height), letter.upper(), fill="green", font=font_grid)
+                    grid_width += ad_pix_grid
+                elif dicty[letter] == Hint.PRESENT:
+                    idraw.text((grid_width, grid_height), letter.upper(), fill="yellow", font=font_grid)
+                    grid_width += ad_pix_grid
+                else:
+                    idraw.text((grid_width, grid_height), letter.upper(), fill="red", font=font_grid)
+                    grid_width += ad_pix_grid
+            else:
+                idraw.text((grid_width, grid_height), letter.upper(), font=font_grid)
+        grid_height += 35
+        grid_width = 60
+        idraw.text((grid_width, grid_height - 15), delimiter, font=font_grid)
 
-    width = 300
-    height = 130
+    width = 250
+    height = 100
+    additional_pixels = 20
     for i in keyboard_text:
         if width < 470:
             pass
         else:
-            width = 300
+            width = 250
             height += 25
         if i in dicty:
-            if dicty[i] == 2:
-                idraw.text((width, height), i.upper(), fill="green", font=headline)
-                width += 20
-            elif dicty[i] == 1:
-                idraw.text((width, height), i.upper(), fill="yellow", font=headline)
-                width += 20
+            if dicty[i] == Hint.CORRECT:
+                idraw.text((width, height), i.upper(), fill="green", font=font_keyboard)
+                width += additional_pixels
+            elif dicty[i] == Hint.PRESENT:
+                idraw.text((width, height), i.upper(), fill="yellow", font=font_keyboard)
+                width += additional_pixels
             else:
-                idraw.text((width, height), i.upper(), fill="red", font=headline)
-                width += 20
+                idraw.text((width, height), i.upper(), fill="black", font=font_keyboard)
+                width += additional_pixels
         else:
-            idraw.text((width, height), i.upper(), font=headline)
-            width += 20
+            idraw.text((width, height), i.upper(), font=font_keyboard)
+            width += additional_pixels
 
     img.save('canvas.png')
     return img
 
 
 def start_game():
-    global word, dictionary, tries, guesses
+    global word, dictionary, tries, guesses, dicty
     tries = initial_tries
     word = random.choice(dictionary)
-#     word = "нитка"
+    # word = "нитка"
     guesses = []
+    dicty = {}
     return "Я загадал слово"
 
 
@@ -126,11 +150,19 @@ def declension(a):
         return "попытка"
 
 
+# ERROR:asyncio:Task exception was never retrieved
+
 # bot gets and returns the defeniton/meaning of the word from wikipedia
 def word_definition(word_def):
     new_line = "\n"
     wikipedia.set_lang("ru")
-    return f"{new_line}{wikipedia.summary(word_def, sentences=5)}"
+    definition = wikipedia.summary(word_def, sentences=1)
+    try:
+        definition
+    except wikipedia.DisambiguationError as e:
+        s = random.choice(e.options)
+        definition = wikipedia.page(s)
+    return f"{new_line}{definition}"
 
 
 @dp.message_handler(commands=['Начало'])
@@ -147,7 +179,7 @@ async def send_start(message: types.Message):
 
 @dp.message_handler(commands=['У'])
 async def send_guess(message: types.Message):
-    global word, tries, dictionary, guess
+    global word, tries, dictionary, guess, dicty
     guess = message.get_args().lower()
     if guess == word:
         guess_with_spaces = ""
@@ -171,23 +203,24 @@ async def send_guess(message: types.Message):
         pool = Counter(s for s, g in zip(word, guess) if s != g)
 
         for s, g in zip(word, guess):
-            if s == g:
+            if g == s:
                 colorful_hint += green
-                dicty[g] = 2
+                dicty[g] = Hint.CORRECT
             elif g in word and pool[g] > 0:
                 colorful_hint += yellow
-                dicty[g] = 1
+                if g not in dicty.keys() or dicty[g] != Hint.CORRECT:
+                    dicty[g] = Hint.PRESENT
                 pool[g] -= 1
             else:
                 colorful_hint += red
-                dicty[g] = 0
+                dicty[g] = Hint.ABSENT
         print(dicty)
 
         guesses.append(guess)
         tries -= 1
         await message.reply(f"{colorful_hint}\nосталось {str(tries)} {declension(tries)}")
 
-        send_picture(draw_grid(guess, guesses), keyboard)
+        send_picture(guesses, keyboard)
         with open('canvas.png', "rb") as photo:
             await bot.send_photo(chat_id=message.chat.id, photo=photo)
 
@@ -204,5 +237,6 @@ if __name__ == '__main__':
 (сначала помечать зеленые , потом желтые) 
 3. клавиатура 
 4. подсказки в виде вариантов
-5. 
+5. убрать ошибку википедии - слово Мужик пример
+6. 
 """
