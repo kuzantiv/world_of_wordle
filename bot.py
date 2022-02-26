@@ -110,8 +110,8 @@ def send_picture(guesses_text, keyboard_text):
 def start_game():
     global word, dictionary, tries, guesses
     tries = initial_tries
-    # word = random.choice(dictionary)
-    word = "нитка"
+    word = random.choice(dictionary)
+#     word = "нитка"
     guesses = []
     return "Я загадал слово"
 
