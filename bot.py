@@ -22,7 +22,6 @@ word = ""
 initial_tries = 6
 tries = initial_tries
 guess = ""
-hint = []
 guesses = []
 
 
@@ -58,7 +57,6 @@ dicty = {}
 
 
 def tip(secret_word, guessed_word):
-    global hint
     pool = Counter(s for s, g in zip(secret_word, guessed_word) if s != g)
     hint = []
 
@@ -71,10 +69,14 @@ def tip(secret_word, guessed_word):
         else:
             hint.append(Hint.ABSENT)
 
+    return hint
+
 
 # the picture of guess history and the keyboard
 
 def send_picture(guesses_text, keyboard_text):
+    global word
+
     img = Image.new('RGBA', (500, 300), 'black')
     idraw = ImageDraw.Draw(img)
     font_keyboard = ImageFont.truetype('RubikMonoOne-Regular.ttf', size=20)
@@ -86,12 +88,14 @@ def send_picture(guesses_text, keyboard_text):
     ad_pix_grid = 30
     for item in guesses_text:
         idraw.text((grid_width, grid_height - 15), delimiter, font=font_grid)
-        for letter in item:
+        hint = tip(word, item)
+        for i, h in enumerate(hint):
+            letter = item[i]
             if letter in dicty:
-                if dicty[letter] == Hint.CORRECT:
+                if h == Hint.CORRECT:
                     idraw.text((grid_width, grid_height), letter.upper(), fill="green", font=font_grid)
                     grid_width += ad_pix_grid
-                elif dicty[letter] == Hint.PRESENT:
+                elif h == Hint.PRESENT:
                     idraw.text((grid_width, grid_height), letter.upper(), fill="yellow", font=font_grid)
                     grid_width += ad_pix_grid
                 else:
@@ -200,21 +204,19 @@ async def send_guess(message: types.Message):
         yellow = "🟨  "
         red = "🟥  "
 
-        pool = Counter(s for s, g in zip(word, guess) if s != g)
-
-        for s, g in zip(word, guess):
-            if g == s:
+        hint = tip(word, guess)
+        for i, h in enumerate(hint):
+            g = guess[i]
+            if h == Hint.CORRECT:
                 colorful_hint += green
-                dicty[g] = Hint.CORRECT
-            elif g in word and pool[g] > 0:
+                dicty[g] = h
+            elif h == Hint.PRESENT:
                 colorful_hint += yellow
                 if g not in dicty.keys() or dicty[g] != Hint.CORRECT:
-                    dicty[g] = Hint.PRESENT
-                pool[g] -= 1
+                    dicty[g] = h
             else:
                 colorful_hint += red
                 dicty[g] = Hint.ABSENT
-        print(dicty)
 
         guesses.append(guess)
         tries -= 1
