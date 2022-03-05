@@ -16,13 +16,13 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=config.API_TOKEN)
 dp = Dispatcher(bot)
 
-CHAT_ID = -1001741490206  # ПИЗДЮШНЯ
-# CHAT_ID = -614450004  # ТЕСТ ЧАТ
 word = ""
 initial_tries = 6
 tries = initial_tries
 guess = ""
 guesses = []
+dicty = {}
+# CHAT_ID = -1001741490206  # ПИЗДЮШНЯ
 
 
 class Hint(Enum):
@@ -33,8 +33,8 @@ class Hint(Enum):
 
 keyboard = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
 
-dicty = {}
 
+chats = {}
 
 # def draw_grid(secret_word, guessed_words):
 #     global initial_tries
@@ -176,7 +176,7 @@ async def send_start(message: types.Message):
 
 @dp.message_handler(commands=['сдаюсь'])
 async def send_start(message: types.Message):
-    await bot.send_message(CHAT_ID, f"Вы проебали, слово было такое: *{word.upper()}*_{word_definition(word)}_",
+    await bot.send_message(message.chat.id, f"Вы проебали, слово было такое: *{word.upper()}*_{word_definition(word)}_",
                            parse_mode="Markdown")
     await message.reply(start_game())
 
@@ -189,12 +189,12 @@ async def send_guess(message: types.Message):
         guess_with_spaces = ""
         for i in guess:
             guess_with_spaces += i + "__"
-        await message.reply(f"🟩  🟩  🟩  🟩  🟩  \n{guess_with_spaces[:-2]}\nПИЗДЕЦ ТЫ МОЛОДЕЦ{word_definition(word)}")
+        await message.reply(f"🟩  🟩  🟩  🟩  🟩  \n{guess_with_spaces[:-2]}\nПИПЕЦ ТЫ МОЛОДЕЦ{word_definition(word)}")
         await message.reply(start_game())
     elif tries == 1:
         # await message.reply(f"Вы проебали, слово было такое: {word}{word_definition(word)}")
-        await bot.send_message(CHAT_ID, f"Вы проебали, слово было такое: *{word.upper()}*_{word_definition(word)}_",
-                               parse_mode="Markdown")
+        await bot.send_message(message.chat.id, f"Вы проебали, слово было такое:"
+                                                f" *{word.upper()}*_{word_definition(word)}_", parse_mode="Markdown")
         await message.reply(start_game())
     elif guess not in dictionary:
         await message.reply("Такого слова нет в пяти-буквенном словаре")
@@ -224,7 +224,7 @@ async def send_guess(message: types.Message):
 
         send_picture(guesses, keyboard)
         with open('canvas.png', "rb") as photo:
-            await bot.send_photo(chat_id=message.chat.id, photo=photo)
+            await bot.send_photo(message.chat.id, photo)
 
 
 if __name__ == '__main__':
@@ -232,13 +232,3 @@ if __name__ == '__main__':
         dictionary = fr.read().splitlines()
     start_game()
     executor.start_polling(dp, skip_updates=True)
-
-"""
-1. склонение слова 'ПОПЫТОК'              ✅✅✅
-2. алгоритм 2 букв                        ✅✅✅
-(сначала помечать зеленые , потом желтые) 
-3. клавиатура 
-4. подсказки в виде вариантов
-5. убрать ошибку википедии - слово Мужик пример
-6. 
-"""
