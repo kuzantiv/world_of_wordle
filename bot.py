@@ -6,11 +6,12 @@ from enum import Enum
 
 from PIL import Image, ImageDraw, ImageFont
 from aiogram import Bot, Dispatcher, executor, types
+import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-API_TOKEN = "5291360227:AAE3n7EbsTdlRZpSE2qlY1BvxYwDxaopZ6I"
+API_TOKEN = config.API_TOKEN
 
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)
