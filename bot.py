@@ -4,19 +4,19 @@ import random
 import sqlite3
 from collections import Counter
 from enum import Enum
-import config
 
 from PIL import Image, ImageDraw, ImageFont
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.dispatcher import filters
+
+import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-
 # Initialize bot and dispatcher
 bot = Bot(token=config.API_TOKEN)
 dp = Dispatcher(bot)
-
 
 initial_tries = 6
 games = {}
@@ -142,12 +142,12 @@ def word_definition(word_def):
             return "\n".join(definitions[0].split("<br>")[1:])
 
 
-@dp.message_handler(commands=['Начало'])
+@dp.message_handler(filters.CommandStart())
 async def send_start(message: types.Message):
     await message.reply(start_game(message.chat.id))
 
 
-@dp.message_handler(commands=['сдаюсь'])
+@dp.message_handler(commands=['giveup'])
 async def send_give_up(message: types.Message):
     word = games[message.chat.id]['word']
     await bot.send_message(message.chat.id,
@@ -156,7 +156,31 @@ async def send_give_up(message: types.Message):
     await message.reply(start_game(message.chat.id))
 
 
-@dp.message_handler(commands=['У'])
+@dp.message_handler(filters.CommandHelp())
+async def send_help(message: types.Message):
+    await message.reply("""
+Привет 🙋. Я СЛОВЛ
+Я загадываю слово, а ты должен его угадать.
+Используй команды: 
+/start — чтобы начать игру
+/g — угадать слово (или просто свайп влево, ответ боту)
+/giveup — сдаться
+/help — помощь
+/about — дополнительная информация об игре и разработчиках
+    """)
+
+
+@dp.message_handler(commands=['about'])
+async def send_help(message: types.Message):
+    await message.reply("""
+@kuzantiv - Founder
+@gulitsky - Cofounder
+@winzitu  - VentureAngel
+    """)
+
+
+@dp.message_handler(commands=['g'])
+@dp.message_handler(filters.IsReplyFilter(True))
 async def send_guess(message: types.Message):
     global games, dictionary
     word = games[message.chat.id]['word']
@@ -164,7 +188,8 @@ async def send_guess(message: types.Message):
     dicty = games[message.chat.id]['dicty']
     guesses = games[message.chat.id]['guesses']
 
-    guess = message.get_args().lower()
+    # guess = message.get_args().lower()
+    guess = message.text.lower().replace('/у ', '')
     if guess == word:
         guess_with_spaces = ""
         for i in guess:
@@ -198,7 +223,8 @@ async def send_guess(message: types.Message):
                 games[message.chat.id]['dicty'][g] = Hint.ABSENT
 
         games[message.chat.id]['guesses'].append(guess)
-        games[message.chat.id]['tries'] -= 1
+        tries -= 1
+        games[message.chat.id]['tries'] = tries
         await message.reply(f"{colorful_hint}\nосталось {str(tries)} {declension(tries)}")
 
         send_picture(message.chat.id, guesses, keyboard)
