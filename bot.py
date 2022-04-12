@@ -179,7 +179,7 @@ async def send_help(message: types.Message):
     """)
 
 
-@dp.message_handler(commands=['g'])
+@dp.message_handler(commands=['g', 'у'])
 @dp.message_handler(filters.IsReplyFilter(True))
 async def send_guess(message: types.Message):
     global games, dictionary
@@ -189,7 +189,7 @@ async def send_guess(message: types.Message):
     guesses = games[message.chat.id]['guesses']
 
     # guess = message.get_args().lower()
-    guess = message.text.lower().replace('/у ', '')
+    guess = message.text.lower().split(' ')[-1]
     if guess == word:
         guess_with_spaces = ""
         for i in guess:
