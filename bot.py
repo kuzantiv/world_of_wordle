@@ -9,7 +9,6 @@ from PIL import Image, ImageDraw, ImageFont
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import filters
 
-import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
