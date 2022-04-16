@@ -118,7 +118,7 @@ def send_picture(chat_id, guesses_text, keyboard_text):
 
 def start_game(chat_id):
     global games, dictionary
-    games[chat_id] = {'tries': initial_tries, 'word': random.choice(dictionary), 'guesses': [], 'dicty': {}}
+    games[chat_id] = {'tries': initial_tries, 'word': random.choice(dictionary), 'guesses': [], 'dicty': {}, 'photo': 0}
     return "Я загадал слово"
 
 
@@ -176,6 +176,7 @@ async def send_help(message: types.Message):
 @kuzantiv - Founder
 @gulitsky - Cofounder
 @winzitu  - VentureAngel
+Github - https://github.com/kuzantiv
     """)
 
 
@@ -188,13 +189,13 @@ async def send_guess(message: types.Message):
     dicty = games[message.chat.id]['dicty']
     guesses = games[message.chat.id]['guesses']
 
-    # guess = message.get_args().lower()
     guess = message.text.lower().split(' ')[-1]
     if guess == word:
         guess_with_spaces = ""
         for i in guess:
             guess_with_spaces += i + "__"
         await message.reply(f"🟩  🟩  🟩  🟩  🟩  \n{guess_with_spaces[:-2]}\nПИПЕЦ ТЫ МОЛОДЕЦ{word_definition(word)}")
+        await message.answer('👏')
         await message.reply(start_game(message.chat.id))
     elif tries == 1:
         await bot.send_message(message.chat.id, f"Вы проиграли, слово было такое:"
@@ -203,33 +204,27 @@ async def send_guess(message: types.Message):
     elif guess not in dictionary:
         await message.reply("Такого слова нет в пяти-буквенном словаре")
     else:
-        colorful_hint = ""
-        green = "🟩  "
-        yellow = "🟨  "
-        red = "🟥  "
-
         hint = tip(word, guess)
         for i, h in enumerate(hint):
             g = guess[i]
             if h == Hint.CORRECT:
-                colorful_hint += green
                 games[message.chat.id]['dicty'][g] = h
             elif h == Hint.PRESENT:
-                colorful_hint += yellow
                 if g not in dicty.keys() or dicty[g] != Hint.CORRECT:
                     games[message.chat.id]['dicty'][g] = h
             else:
-                colorful_hint += red
                 games[message.chat.id]['dicty'][g] = Hint.ABSENT
 
         games[message.chat.id]['guesses'].append(guess)
         tries -= 1
         games[message.chat.id]['tries'] = tries
-        await message.reply(f"{colorful_hint}\nосталось {str(tries)} {declension(tries)}")
 
         send_picture(message.chat.id, guesses, keyboard)
         with open('result' + str(message.chat.id) + '.png', "rb") as photo:
-            await bot.send_photo(message.chat.id, photo)
+            message = await bot.send_photo(message.chat.id, photo)
+            if games[message.chat.id]['photo']:
+                await bot.delete_message(message.chat.id, games[message.chat.id]['photo'])
+            games[message.chat.id]['photo'] = message.message_id
         os.remove('result' + str(message.chat.id) + '.png')
 
 
