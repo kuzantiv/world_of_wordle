@@ -4,7 +4,6 @@ import random
 import sqlite3
 from collections import Counter
 from enum import Enum
-
 from PIL import Image, ImageDraw, ImageFont
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import filters
