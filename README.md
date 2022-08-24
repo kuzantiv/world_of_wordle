@@ -1,7 +1,7 @@
 # Enjoy playing wordle in Telegram
 link https://t.me/world_of_wordle_bot
 
-![img.png](img.png)
+![img.png](QR of bot link.png)
 
 # TO-DO List
 1. Implement English language  
