@@ -13,7 +13,8 @@ from aiogram.dispatcher import filters
 logging.basicConfig(level=logging.INFO)
 
 # Initialize bot and dispatcher
-bot = Bot(token=os.environ['API_TOKEN'])
+# bot = Bot(token=os.environ['API_TOKEN'])
+bot = Bot(token='5371353623:AAG_18cdBeTi4RqmY4J7i4-KYC_GxDx_-ZQ')
 dp = Dispatcher(bot)
 
 initial_tries = 6
@@ -132,7 +133,7 @@ def declension(a):
 
 # bot gets and returns the definition/meaning of the word from wikipedia
 def word_definition(word_def):
-    with sqlite3.connect('dict.db') as con:
+    with sqlite3.connect('d_base.db') as con:
         definitions = con.execute("select Article from Dict where Word=:word", {"word": word_def}).fetchone()
         if definitions is None:
             return ""
