@@ -2,12 +2,12 @@ import logging
 import os
 import random
 import sqlite3
+import time
 from collections import Counter
 from enum import Enum
 from PIL import Image, ImageDraw, ImageFont
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import filters
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -121,6 +121,13 @@ def start_game(chat_id):
     return "Я загадал слово"
 
 
+def score_guess(user_id, user_word):
+    with sqlite3.connect('d_base.db') as con:
+        con = con.cursor()
+        con.execute('insert into player_words (user_id, word, time_of_move)'
+                    'values (?,?,?)', (user_id, user_word, round(time.time())))
+
+
 # Declension of the word => попытка(ок)
 def declension(a):
     if a == 5:
@@ -189,6 +196,7 @@ async def send_guess(message: types.Message):
 
     guess = message.text.lower().split(' ')[-1]
     if guess == word:
+        score_guess(message.from_user.id, guess)
         guess_with_spaces = ""
         for i in guess:
             guess_with_spaces += i + "__"
@@ -202,6 +210,7 @@ async def send_guess(message: types.Message):
     elif guess not in dictionary:
         await message.reply("Такого слова нет в пяти-буквенном словаре")
     else:
+        score_guess(message.from_user.id, guess)
         hint = tip(word, guess)
         for i, h in enumerate(hint):
             g = guess[i]
