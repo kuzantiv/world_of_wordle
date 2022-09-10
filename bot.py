@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Initialize bot and dispatcher
 # bot = Bot(token=os.environ['API_TOKEN'])
-bot = Bot(token='5371353623:AAG_18cdBeTi4RqmY4J7i4-KYC_GxDx_-ZQ')
+bot = Bot(token='5371353623:AAF4mm-A5f_15ylhLcGUKjo4qZqSSgYHyhA')
 dp = Dispatcher(bot)
 
 initial_tries = 6
