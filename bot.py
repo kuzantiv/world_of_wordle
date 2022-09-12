@@ -125,7 +125,7 @@ def score_guess(user_id, user_name, user_surname, user_word):
     with sqlite3.connect('d_base.db') as con:
         con = con.cursor()
         con.execute('insert into player_words (user_id, user_name, user_surname, word, time_of_move)'
-                    'values (?,?,?,?,?)', (user_id, user_word, user_name, user_surname, round(time.time())))
+                    'values (?,?,?,?,?)', (user_id, user_name, user_surname, user_word, round(time.time())))
 
 
 # Declension of the word => попытка(ок)
