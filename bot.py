@@ -121,11 +121,11 @@ def start_game(chat_id):
     return "Я загадал слово"
 
 
-def score_guess(user_id, user_word):
+def score_guess(user_id, user_word, user_name):
     with sqlite3.connect('d_base.db') as con:
         con = con.cursor()
         con.execute('insert into player_words (user_id, word, time_of_move)'
-                    'values (?,?,?)', (user_id, user_word, round(time.time())))
+                    'values (?,?,?)', (user_id, user_word, round(time.time()), user_name))
 
 
 # Declension of the word => попытка(ок)
@@ -196,7 +196,7 @@ async def send_guess(message: types.Message):
 
     guess = message.text.lower().split(' ')[-1]
     if guess == word:
-        score_guess(message.from_user.id, guess)
+        score_guess(message.from_user.id, guess, message.from_user.first_name)
         guess_with_spaces = ""
         for i in guess:
             guess_with_spaces += i + "__"
@@ -210,7 +210,7 @@ async def send_guess(message: types.Message):
     elif guess not in dictionary:
         await message.reply("Такого слова нет в пяти-буквенном словаре")
     else:
-        score_guess(message.from_user.id, guess)
+        score_guess(message.from_user.id, guess, message.from_user.first_name)
         hint = tip(word, guess)
         for i, h in enumerate(hint):
             g = guess[i]
