@@ -11,7 +11,6 @@ from PIL import ImageFont
 
 from image_handling import *
 
-# from image_handling import *
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -239,7 +238,6 @@ async def send_guess(message: types.Message):
 
         result_pic = draw_picture(message.chat.id, guesses, keyboard)
         path_to_downloaded_avatar = await download_avatar(bot, message.chat.id, message.from_user.id)
-        # get_user_face(path_to_downloaded_avatar)
         crop_circle_from_avatar(src=path_to_downloaded_avatar, dst=path_to_downloaded_avatar)
         resize_picture(path_to_downloaded_avatar)
         insert_users_logo(result_pic, message.chat.id, players)
