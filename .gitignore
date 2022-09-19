@@ -1,1 +1,3 @@
-config.py
+settings.py
+users_logos
+d_base.db

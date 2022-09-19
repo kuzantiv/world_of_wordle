@@ -5,9 +5,13 @@ import sqlite3
 import time
 from collections import Counter
 from enum import Enum
-from PIL import Image, ImageDraw, ImageFont
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Dispatcher, executor, types
 from aiogram.dispatcher import filters
+from PIL import ImageFont
+
+from image_handling import *
+
+# from image_handling import *
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,16 +50,26 @@ def tip(secret_word, guessed_word):
     return hint
 
 
+def start_game(chat_id):
+    global games, dictionary
+    games[chat_id] = {'tries': initial_tries,
+                      'word': random.choice(dictionary),
+                      'guesses': [],
+                      'dicty': {},
+                      'photo': 0,
+                      'players': []}
+    return "Я загадал слово"
+
+
 # the picture of guess history and the keyboard
-def send_picture(chat_id, guesses_text, keyboard_text):
+def draw_picture(chat_id, guesses_text, keyboard_text):
     word = games[chat_id]['word']
     dicty = games[chat_id]['dicty']
     img = Image.new('RGB', (500, 300), color=(31, 48, 78))
 
     draw = ImageDraw.Draw(img)
-    font_keyboard = ImageFont.truetype('RubikMonoOne-Regular.ttf', size=20)
-    font_grid = ImageFont.truetype('Jetbrainsmonobold.ttf', size=30)
-    # draw_grid(img)
+    font_keyboard = ImageFont.truetype('fonts/RubikMonoOne-Regular.ttf', size=20)
+    font_grid = ImageFont.truetype('fonts/Jetbrainsmonobold.ttf', size=30)
 
     x0, y0 = 60, 65
     x1, y1 = 200, 65
@@ -110,17 +124,12 @@ def send_picture(chat_id, guesses_text, keyboard_text):
         else:
             draw.text((width, height), i.upper(), font=font_keyboard)
             width += additional_pixels
-    photo_name = 'result' + str(chat_id) + '.png'
+    photo_name = f'result{chat_id}.png'
     img.save(photo_name)
-    return img
+    return photo_name
 
 
-def start_game(chat_id):
-    global games, dictionary
-    games[chat_id] = {'tries': initial_tries, 'word': random.choice(dictionary), 'guesses': [], 'dicty': {}, 'photo': 0}
-    return "Я загадал слово"
-
-
+# code from stack overflow
 def score_guess(user_id, user_name, user_surname, user_word):
     with sqlite3.connect('d_base.db') as con:
         con = con.cursor()
@@ -193,6 +202,7 @@ async def send_guess(message: types.Message):
     tries = games[message.chat.id]['tries']
     dicty = games[message.chat.id]['dicty']
     guesses = games[message.chat.id]['guesses']
+    players = games[message.chat.id]['players']
 
     guess = message.text.lower().split(' ')[-1]
     if guess == word:
@@ -225,14 +235,23 @@ async def send_guess(message: types.Message):
         games[message.chat.id]['guesses'].append(guess)
         tries -= 1
         games[message.chat.id]['tries'] = tries
+        players.append(f'{message.from_user.id}')
 
-        send_picture(message.chat.id, guesses, keyboard)
-        with open('result' + str(message.chat.id) + '.png', "rb") as photo:
+        result_pic = draw_picture(message.chat.id, guesses, keyboard)
+        path_to_downloaded_avatar = await download_avatar(bot, message.chat.id, message.from_user.id)
+        # get_user_face(path_to_downloaded_avatar)
+        crop_circle_from_avatar(src=path_to_downloaded_avatar, dst=path_to_downloaded_avatar)
+        resize_picture(path_to_downloaded_avatar)
+        insert_users_logo(result_pic, message.chat.id, players)
+        # если поставить после 295 строчки, то id пользователя меняется
+        # os.remove(path_to_downloaded_avatar)
+
+        with open(f'result{message.chat.id}.png', "rb") as photo:
             message = await bot.send_photo(message.chat.id, photo)
             if games[message.chat.id]['photo']:
                 await bot.delete_message(message.chat.id, games[message.chat.id]['photo'])
             games[message.chat.id]['photo'] = message.message_id
-        os.remove('result' + str(message.chat.id) + '.png')
+        os.remove(f'result{message.chat.id}.png')
 
 
 if __name__ == '__main__':
