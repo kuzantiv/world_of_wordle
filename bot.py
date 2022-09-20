@@ -16,8 +16,7 @@ from image_handling import *
 logging.basicConfig(level=logging.INFO)
 
 # Initialize bot and dispatcher
-# bot = Bot(token=os.environ['API_TOKEN'])
-bot = Bot(token='5371353623:AAF4mm-A5f_15ylhLcGUKjo4qZqSSgYHyhA')
+bot = Bot(token=os.environ['API_TOKEN'])
 dp = Dispatcher(bot)
 
 initial_tries = 6
