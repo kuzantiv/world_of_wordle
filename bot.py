@@ -208,12 +208,13 @@ async def send_guess(message: types.Message):
         guess_with_spaces = ""
         for i in guess:
             guess_with_spaces += i + "__"
-        await message.reply(f"🟩  🟩  🟩  🟩  🟩  \n{guess_with_spaces[:-2]}\nПИПЕЦ ТЫ МОЛОДЕЦ{word_definition(word)}")
+        await message.reply(f"🟩  🟩  🟩  🟩  🟩  \n{guess_with_spaces[:-2]}\nПИПЕЦ ТЫ МОЛОДЕЦ\n{word_definition(word)}")
         await message.answer('👏')
         await message.reply(start_game(message.chat.id))
     elif tries == 1:
-        await bot.send_message(message.chat.id, f"Вы проиграли, слово было такое:"
-                                                f" *{word.upper()}*_{word_definition(word)}_", parse_mode="Markdown")
+        await bot.send_message(message.chat.id,
+                               f'Вы проиграли, слово было такое:\n*{word.upper()}*\n_{word_definition(word)}_',
+                               parse_mode="Markdown")
         await message.reply(start_game(message.chat.id))
     elif guess not in dictionary:
         await message.reply("Такого слова нет в пяти-буквенном словаре")
