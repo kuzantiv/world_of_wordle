@@ -1,7 +1,27 @@
 import shutil
+
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
+
 from aiogram import Bot
+
+
+
+
+def draw_winner_name(chat_id, user_full_name, user_id):
+    img = Image.open("last_winners/winner_backgraund_tamplate.jpg")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("fonts/Jetbrainsmonobold.ttf", 350)
+    first_name = user_full_name.split()[0]
+    last_name = user_full_name.split()[1]
+
+    draw.text((2500, 2000), first_name, (255, 255, 255), font=font)
+    draw.text((2500, 2500), last_name, (255, 255, 255), font=font)
+
+    photo_name = f'last_winner_pic_chat{chat_id}user{user_id}.jpg'
+    img.save(f'last_winners/{photo_name}')
+
+    return photo_name
 
 
 async def download_avatar(bot: Bot, chat_id, user_id):

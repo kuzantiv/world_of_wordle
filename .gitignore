@@ -1,5 +1,8 @@
-settings.py
-users_logos/
-d_base.db
+# folders
 venv/
 .idea/
+users_logos/
+last_winners/
+# files
+d_base.db
+settings.py

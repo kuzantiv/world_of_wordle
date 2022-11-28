@@ -5,12 +5,15 @@ import sqlite3
 import time
 from collections import Counter
 from enum import Enum
+
+from PIL import ImageFont
 from aiogram import Dispatcher, executor, types
 from aiogram.dispatcher import filters
-from PIL import ImageFont
 
+# personal imports
+import keyboards as kb
 from image_handling import *
-
+from working_with_db_functions import *
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +33,33 @@ class Hint(Enum):
 
 
 keyboard = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+
+
+# ===============================================
+def get_word_id_from_db(word):
+    with sqlite3.connect('words_with_sentence_examples.db') as con:
+        record = con.execute('SELECT id FROM words where word=?', (word,)).fetchone()
+
+    return record[0]
+
+
+def get_random_example(word_id: int) -> dict[str, str]:
+    with sqlite3.connect('words_with_sentence_examples.db') as con:
+        con.row_factory = sqlite3.Row
+        random_example = con.execute(
+            f'SELECT example, target_word, source '
+            f'FROM examples WHERE word_id={word_id} '
+            f'ORDER BY RANDOM() LIMIT 1').fetchone()
+
+    return dict(random_example)
+
+
+def format_example(example: dict[str, str]) -> str:
+    example['example'] = example['example'].replace(example['target_word'], f'{len(example["target_word"]) * "🟩 "}')
+    return f'{example["example"]}\n\n_{example["source"]}_'
+
+
+# ===============================================
 
 
 def tip(secret_word, guessed_word):
@@ -145,7 +175,28 @@ def declension(a):
         return "попытка"
 
 
-# bot gets and returns the definition/meaning of the word from wikipedia
+# inline button
+# =======================================================================================
+@dp.callback_query_handler(lambda c: c.data == 'button1')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    word = games[callback_query.message.chat.id]['word']
+    # await bot.answer_callback_query(callback_query.id,
+    #                                 format_example(get_random_example(get_word_id_from_db(word))), show_alert=True)
+    await bot.send_message(callback_query.message.chat.id,
+                           format_example(get_random_example(get_word_id_from_db(word))),
+                           parse_mode='Markdown')
+
+
+# =======================================================================================
+
+@dp.message_handler(commands=['hint'])
+async def send_help(message: types.Message):
+    global games
+    word = games[message.chat.id]['word']
+    await bot.send_message(message.chat.id, format_example(get_random_example(get_word_id_from_db(word))),
+                           parse_mode='Markdown')
+
+
 def word_definition(word_def):
     with sqlite3.connect('d_base.db') as con:
         definitions = con.execute("select Article from Dict where Word=:word", {"word": word_def}).fetchone()
@@ -175,16 +226,22 @@ async def send_help(message: types.Message):
 Привет 🙋. Я СЛОВЛ
 Я загадываю слово, а ты должен его угадать.
 Используй команды: 
-/start — чтобы начать игру
-/giveup — сдаться
+/gifInstruction - гиф инструкция
+/start — начать игру
+/giveUp — сдаться
 /help — помощь
 /about — дополнительная информация об игре и разработчиках
     """)
 
 
+@dp.message_handler(commands=['gifinstruction'])
+async def send_help(message: types.Message):
+    await bot.send_video(message.chat.id, open('video_instruction.mp4', 'rb'))
+
+
 @dp.message_handler(commands=['about'])
 async def send_help(message: types.Message):
-    await message.reply("""
+    await message.answer("""
 @kuzantiv - Founder
 @gulitsky - Cofounder
 @winzitu  - VentureAngel
@@ -201,23 +258,27 @@ async def send_guess(message: types.Message):
     dicty = games[message.chat.id]['dicty']
     guesses = games[message.chat.id]['guesses']
     players = games[message.chat.id]['players']
+    print(word)
 
     guess = message.text.lower().split(' ')[-1]
     if guess == word:
         score_guess(message.from_user.id, message.from_user.first_name, message.from_user.last_name, guess)
-        guess_with_spaces = ""
-        for i in guess:
-            guess_with_spaces += i + "__"
-        await message.reply(f"🟩  🟩  🟩  🟩  🟩  \n{guess_with_spaces[:-2]}\nПИПЕЦ ТЫ МОЛОДЕЦ\n{word_definition(word)}")
-        await message.answer('👏')
+        await message.reply(f"\n\n{word_definition(word)}")
+
+        draw_winner_name(chat_id=message.chat.id, user_full_name=message.from_user.full_name,
+                         user_id=message.from_user.id)
+        with open(f'last_winners/last_winner_pic_chat{message.chat.id}user{message.from_user.id}.jpg', "rb") as photo:
+            await bot.send_photo(message.chat.id, photo)
         await message.reply(start_game(message.chat.id))
     elif tries == 1:
         await bot.send_message(message.chat.id,
                                f'Вы проиграли, слово было такое:\n*{word.upper()}*\n_{word_definition(word)}_',
                                parse_mode="Markdown")
-        await message.reply(start_game(message.chat.id))
+        await message.answer(start_game(message.chat.id))
     elif guess not in dictionary:
         await message.reply("Такого слова нет в пяти-буквенном словаре")
+        await message.answer("Если сложно, нажимай", reply_markup=kb.inline_kb1)
+
     else:
         score_guess(message.from_user.id, message.from_user.first_name, message.from_user.last_name, guess)
         hint = tip(word, guess)
@@ -241,11 +302,10 @@ async def send_guess(message: types.Message):
         crop_circle_from_avatar(src=path_to_downloaded_avatar, dst=path_to_downloaded_avatar)
         resize_picture(path_to_downloaded_avatar)
         insert_users_logo(result_pic, message.chat.id, players)
-        # если поставить после 295 строчки, то id пользователя меняется
-        # os.remove(path_to_downloaded_avatar)
 
         with open(f'result{message.chat.id}.png', "rb") as photo:
             message = await bot.send_photo(message.chat.id, photo)
+            await message.answer("Если сложно, нажимай", reply_markup=kb.inline_kb1)
             if games[message.chat.id]['photo']:
                 await bot.delete_message(message.chat.id, games[message.chat.id]['photo'])
             games[message.chat.id]['photo'] = message.message_id
@@ -253,6 +313,6 @@ async def send_guess(message: types.Message):
 
 
 if __name__ == '__main__':
-    with open("five_letter_nouns.txt", "r", encoding="utf-8") as fr:
-        dictionary = fr.read().splitlines()
+    dictionary = get_words_that_have_examples('words_with_sentence_examples.db')
     executor.start_polling(dp, skip_updates=True)
+    
