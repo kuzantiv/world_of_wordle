@@ -315,4 +315,3 @@ async def send_guess(message: types.Message):
 if __name__ == '__main__':
     dictionary = get_words_that_have_examples('words_with_sentence_examples.db')
     executor.start_polling(dp, skip_updates=True)
-    
