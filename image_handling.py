@@ -1,11 +1,7 @@
-import shutil
-
 import numpy as np
+import shutil
 from PIL import Image, ImageDraw, ImageFont
-
 from aiogram import Bot
-
-
 
 
 def draw_winner_name(chat_id, user_full_name, user_id):

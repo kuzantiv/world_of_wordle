@@ -6,12 +6,10 @@ import time
 from collections import Counter
 from enum import Enum
 
+import keyboards as kb
 from PIL import ImageFont
 from aiogram import Dispatcher, executor, types
 from aiogram.dispatcher import filters
-
-# personal imports
-import keyboards as kb
 from image_handling import *
 from working_with_db_functions import *
 
@@ -38,7 +36,8 @@ keyboard = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
 # ===============================================
 def get_word_id_from_db(word):
     with sqlite3.connect('words_with_sentence_examples.db') as con:
-        record = con.execute('SELECT id FROM words where word=?', (word,)).fetchone()
+        record = con.execute('SELECT id FROM words where word=?',
+                             (word,)).fetchone()
 
     return record[0]
 
@@ -55,11 +54,9 @@ def get_random_example(word_id: int) -> dict[str, str]:
 
 
 def format_example(example: dict[str, str]) -> str:
-    example['example'] = example['example'].replace(example['target_word'], f'{len(example["target_word"]) * "🟩 "}')
+    example['example'] = example['example'].replace(example['target_word'],
+                                                    f'{len(example["target_word"]) * "🟩 "}')
     return f'{example["example"]}\n\n_{example["source"]}_'
-
-
-# ===============================================
 
 
 def tip(secret_word, guessed_word):
@@ -89,15 +86,37 @@ def start_game(chat_id):
     return "Я загадал слово"
 
 
-# the picture of guess history and the keyboard
+def score_guess(user_id, user_name, user_surname, user_word):
+    with sqlite3.connect('d_base.db') as con:
+        con = con.cursor()
+        query = ('INSERT INTO player_words (user_id, '
+                 'user_name, user_surname, word, time_of_move)'
+                 'VALUES (?,?,?,?,?)',
+                 (user_id, user_name, user_surname, user_word, round(time.time()))
+                 )
+        con.execute(*query)
+
+
+def declension(a):
+    """Changes declension of the word "попытка"."""
+    if a == 5:
+        return "попыток"
+    elif a in range(2, 5):
+        return "попытки"
+    else:
+        return "попытка"
+
+
 def draw_picture(chat_id, guesses_text, keyboard_text):
     word = games[chat_id]['word']
     dicty = games[chat_id]['dicty']
     img = Image.new('RGB', (500, 300), color=(31, 48, 78))
 
     draw = ImageDraw.Draw(img)
-    font_keyboard = ImageFont.truetype('fonts/RubikMonoOne-Regular.ttf', size=20)
-    font_grid = ImageFont.truetype('fonts/Jetbrainsmonobold.ttf', size=30)
+    font_keyboard = ImageFont.truetype('fonts/RubikMonoOne-Regular.ttf',
+                                       size=20)
+    font_grid = ImageFont.truetype('fonts/Jetbrainsmonobold.ttf',
+                                   size=30)
 
     x0, y0 = 60, 65
     x1, y1 = 200, 65
@@ -117,16 +136,26 @@ def draw_picture(chat_id, guesses_text, keyboard_text):
             letter = item[i]
             if letter in dicty:
                 if h == Hint.CORRECT:
-                    draw.text((grid_width, grid_height), letter.upper(), fill="green", font=font_grid)
+                    draw.text((grid_width, grid_height),
+                              letter.upper(),
+                              fill="green",
+                              font=font_grid)
                     grid_width += ad_pix_grid
                 elif h == Hint.PRESENT:
-                    draw.text((grid_width, grid_height), letter.upper(), fill="yellow", font=font_grid)
+                    draw.text((grid_width, grid_height),
+                              letter.upper(), fill="yellow",
+                              font=font_grid)
                     grid_width += ad_pix_grid
                 else:
-                    draw.text((grid_width, grid_height), letter.upper(), fill="red", font=font_grid)
+                    draw.text((grid_width, grid_height),
+                              letter.upper(),
+                              fill="red",
+                              font=font_grid)
                     grid_width += ad_pix_grid
             else:
-                draw.text((grid_width, grid_height), letter.upper(), font=font_grid)
+                draw.text((grid_width, grid_height),
+                          letter.upper(),
+                          font=font_grid)
         grid_height += 35
         grid_width = 60
 
@@ -141,13 +170,16 @@ def draw_picture(chat_id, guesses_text, keyboard_text):
             height += 25
         if i in dicty:
             if dicty[i] == Hint.CORRECT:
-                draw.text((width, height), i.upper(), fill="green", font=font_keyboard)
+                draw.text((width, height), i.upper(),
+                          fill="green", font=font_keyboard)
                 width += additional_pixels
             elif dicty[i] == Hint.PRESENT:
-                draw.text((width, height), i.upper(), fill="yellow", font=font_keyboard)
+                draw.text((width, height), i.upper(),
+                          fill="yellow", font=font_keyboard)
                 width += additional_pixels
             else:
-                draw.text((width, height), i.upper(), fill=(31, 48, 78,), font=font_keyboard)
+                draw.text((width, height), i.upper(),
+                          fill=(31, 48, 78,), font=font_keyboard)
                 width += additional_pixels
         else:
             draw.text((width, height), i.upper(), font=font_keyboard)
@@ -157,49 +189,27 @@ def draw_picture(chat_id, guesses_text, keyboard_text):
     return photo_name
 
 
-# code from stack overflow
-def score_guess(user_id, user_name, user_surname, user_word):
-    with sqlite3.connect('d_base.db') as con:
-        con = con.cursor()
-        con.execute('insert into player_words (user_id, user_name, user_surname, word, time_of_move)'
-                    'values (?,?,?,?,?)', (user_id, user_name, user_surname, user_word, round(time.time())))
-
-
-# Declension of the word => попытка(ок)
-def declension(a):
-    if a == 5:
-        return "попыток"
-    elif a in range(2, 5):
-        return "попытки"
-    else:
-        return "попытка"
-
-
-# inline button
-# =======================================================================================
 @dp.callback_query_handler(lambda c: c.data == 'button1')
 async def process_callback_button1(callback_query: types.CallbackQuery):
     word = games[callback_query.message.chat.id]['word']
-    # await bot.answer_callback_query(callback_query.id,
-    #                                 format_example(get_random_example(get_word_id_from_db(word))), show_alert=True)
     await bot.send_message(callback_query.message.chat.id,
                            format_example(get_random_example(get_word_id_from_db(word))),
                            parse_mode='Markdown')
 
 
-# =======================================================================================
-
 @dp.message_handler(commands=['hint'])
 async def send_help(message: types.Message):
     global games
     word = games[message.chat.id]['word']
-    await bot.send_message(message.chat.id, format_example(get_random_example(get_word_id_from_db(word))),
+    await bot.send_message(message.chat.id,
+                           format_example(get_random_example(get_word_id_from_db(word))),
                            parse_mode='Markdown')
 
 
 def word_definition(word_def):
     with sqlite3.connect('d_base.db') as con:
-        definitions = con.execute("select Article from Dict where Word=:word", {"word": word_def}).fetchone()
+        definitions = con.execute("select Article from Dict where Word=:word",
+                                  {"word": word_def}).fetchone()
         if definitions is None:
             return ""
         else:
@@ -215,7 +225,8 @@ async def send_start(message: types.Message):
 async def send_give_up(message: types.Message):
     word = games[message.chat.id]['word']
     await bot.send_message(message.chat.id,
-                           f"Вы проиграли, слово было такое: *{word.upper()}*\n_{word_definition(word)}_",
+                           f"Вы проиграли, слово было такое: "
+                           f"*{word.upper()}*\n_{word_definition(word)}_",
                            parse_mode="Markdown")
     await message.reply(start_game(message.chat.id))
 
@@ -236,7 +247,8 @@ async def send_help(message: types.Message):
 
 @dp.message_handler(commands=['gifinstruction'])
 async def send_help(message: types.Message):
-    await bot.send_video(message.chat.id, open('video_instruction.mp4', 'rb'))
+    await bot.send_video(message.chat.id,
+                         open('video_instruction.mp4', 'rb'))
 
 
 @dp.message_handler(commands=['about'])
@@ -262,25 +274,34 @@ async def send_guess(message: types.Message):
 
     guess = message.text.lower().split(' ')[-1]
     if guess == word:
-        score_guess(message.from_user.id, message.from_user.first_name, message.from_user.last_name, guess)
+        score_guess(message.from_user.id,
+                    message.from_user.first_name,
+                    message.from_user.last_name, guess)
         await message.reply(f"\n\n{word_definition(word)}")
 
-        draw_winner_name(chat_id=message.chat.id, user_full_name=message.from_user.full_name,
+        draw_winner_name(chat_id=message.chat.id,
+                         user_full_name=message.from_user.full_name,
                          user_id=message.from_user.id)
-        with open(f'last_winners/last_winner_pic_chat{message.chat.id}user{message.from_user.id}.jpg', "rb") as photo:
+        with open(f'last_winners/last_winner_pic_chat'
+                  f'{message.chat.id}user'
+                  f'{message.from_user.id}.jpg', "rb") as photo:
             await bot.send_photo(message.chat.id, photo)
         await message.reply(start_game(message.chat.id))
     elif tries == 1:
         await bot.send_message(message.chat.id,
-                               f'Вы проиграли, слово было такое:\n*{word.upper()}*\n_{word_definition(word)}_',
+                               f'Вы проиграли, слово было такое:\n'
+                               f'*{word.upper()}*\n_{word_definition(word)}_',
                                parse_mode="Markdown")
         await message.answer(start_game(message.chat.id))
     elif guess not in dictionary:
         await message.reply("Такого слова нет в пяти-буквенном словаре")
-        await message.answer("Если сложно, нажимай", reply_markup=kb.inline_kb1)
+        await message.answer("Если сложно, нажимай",
+                             reply_markup=kb.inline_kb1)
 
     else:
-        score_guess(message.from_user.id, message.from_user.first_name, message.from_user.last_name, guess)
+        score_guess(message.from_user.id,
+                    message.from_user.first_name,
+                    message.from_user.last_name, guess)
         hint = tip(word, guess)
         for i, h in enumerate(hint):
             g = guess[i]
@@ -298,16 +319,21 @@ async def send_guess(message: types.Message):
         players.append(f'{message.from_user.id}')
 
         result_pic = draw_picture(message.chat.id, guesses, keyboard)
-        path_to_downloaded_avatar = await download_avatar(bot, message.chat.id, message.from_user.id)
-        crop_circle_from_avatar(src=path_to_downloaded_avatar, dst=path_to_downloaded_avatar)
+        path_to_downloaded_avatar = await download_avatar(bot,
+                                                          message.chat.id,
+                                                          message.from_user.id)
+        crop_circle_from_avatar(src=path_to_downloaded_avatar,
+                                dst=path_to_downloaded_avatar)
         resize_picture(path_to_downloaded_avatar)
         insert_users_logo(result_pic, message.chat.id, players)
 
         with open(f'result{message.chat.id}.png', "rb") as photo:
             message = await bot.send_photo(message.chat.id, photo)
-            await message.answer("Если сложно, нажимай", reply_markup=kb.inline_kb1)
+            await message.answer("Если сложно, нажимай",
+                                 reply_markup=kb.inline_kb1)
             if games[message.chat.id]['photo']:
-                await bot.delete_message(message.chat.id, games[message.chat.id]['photo'])
+                await bot.delete_message(message.chat.id,
+                                         games[message.chat.id]['photo'])
             games[message.chat.id]['photo'] = message.message_id
         os.remove(f'result{message.chat.id}.png')
 
