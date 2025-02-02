@@ -6,3 +6,4 @@ last_winners/
 # files
 d_base.db
 settings.py
+.env
