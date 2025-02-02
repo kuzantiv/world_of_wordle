@@ -2,18 +2,26 @@ import asyncio
 import logging
 import os
 import random
+import sqlite3
 import time
 from collections import Counter
 from enum import Enum
 
-from aiogram import Dispatcher, types, F
-from aiogram import filters
+from PIL import Image, ImageDraw, ImageFont
+from aiogram import filters, Bot, Dispatcher
+from aiogram import types, F
 from aiogram.types.input_file import FSInputFile
 from dotenv import load_dotenv
 
 import keyboards as kb
-from image_handling import *
-from working_with_db_functions import *
+from image_handling import (
+    draw_winner_name,
+    crop_circle_from_avatar,
+    resize_picture,
+    insert_users_logo,
+    download_avatar
+)
+from working_with_db_functions import get_words_that_have_examples
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,7 +46,6 @@ keyboard = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
 dictionary = {}
 
 
-# ===============================================
 def get_word_id_from_db(word):
     with sqlite3.connect('words_with_sentence_examples.db') as con:
         record = con.execute('SELECT id FROM words where word=?',
@@ -205,25 +212,6 @@ async def process_callback_button1(callback_query: types.CallbackQuery):
     )
 
 
-@dp.message(filters.Command("hint"))
-async def send_help(message: types.Message):
-    global games
-    word = games[message.chat.id]['word']
-    await bot.send_message(message.chat.id,
-                           format_example(get_random_example(get_word_id_from_db(word))),
-                           parse_mode='Markdown')
-
-
-def word_definition(word_def):
-    with sqlite3.connect('d_base.db') as con:
-        definitions = con.execute("select Article from Dict where Word=:word",
-                                  {"word": word_def}).fetchone()
-        if definitions is None:
-            return ""
-        else:
-            return "\n".join(definitions[0].split("<br>")[1:])
-
-
 @dp.message(filters.CommandStart())
 async def send_start(message: types.Message):
     await message.reply(start_game(message.chat.id))
@@ -241,7 +229,8 @@ async def send_give_up(message: types.Message):
 
 @dp.message(filters.Command("help"))
 async def send_help(message: types.Message):
-    await message.reply("""
+    await message.reply(
+        """
 Привет 🙋. Я СЛОВЛ
 Я загадываю слово, а ты должен его угадать.
 Используй команды: 
@@ -250,25 +239,48 @@ async def send_help(message: types.Message):
 /giveUp — сдаться
 /help — помощь
 /about — дополнительная информация об игре и разработчиках
-    """)
+        """
+    )
 
 
 @dp.message(filters.Command("gifinstruction"))
-async def send_help(message: types.Message):
-    # Open the file in binary mode and pass it directly
+async def send_gif_instruction(message: types.Message):
     video_path = "video_instruction.mp4"
     video_file = FSInputFile(video_path)
     await bot.send_video(message.chat.id, video_file)
 
 
 @dp.message(filters.Command("about"))
-async def send_help(message: types.Message):
-    await message.answer("""
+async def send_about(message: types.Message):
+    await message.answer(
+        """
 @kuzantiv - Founder
 @gulitsky - Cofounder
 @winzitu  - VentureAngel
 Github - https://github.com/kuzantiv
-    """)
+        """
+    )
+
+
+@dp.message(filters.Command("hint"))
+async def send_hint(message: types.Message):
+    global games
+    word = games[message.chat.id]['word']
+    await bot.send_message(
+        message.chat.id,
+        format_example(get_random_example(get_word_id_from_db(word))),
+        parse_mode='Markdown'
+    )
+
+
+def word_definition(word_def):
+    with sqlite3.connect('d_base.db') as con:
+        definitions = con.execute("select Article from Dict where Word=:word",
+                                  {"word": word_def}).fetchone()
+        if definitions is None:
+            return ""
+        else:
+            return "\n".join(definitions[0].split("<br>")[1:])
 
 
 @dp.message(filters.Command("g") or filters.Command("у"))
@@ -329,9 +341,7 @@ async def send_guess(message: types.Message):
         players.append(f'{message.from_user.id}')
 
         result_pic = draw_picture(message.chat.id, guesses, keyboard)
-        path_to_downloaded_avatar = await download_avatar(bot,
-                                                          message.chat.id,
-                                                          message.from_user.id)
+        path_to_downloaded_avatar = await download_avatar(bot, message.from_user.id)
         crop_circle_from_avatar(src=path_to_downloaded_avatar,
                                 dst=path_to_downloaded_avatar)
         resize_picture(path_to_downloaded_avatar)

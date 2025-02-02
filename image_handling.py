@@ -1,5 +1,6 @@
-import numpy as np
 import shutil
+
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from aiogram import Bot
 
@@ -20,7 +21,7 @@ def draw_winner_name(chat_id, user_full_name, user_id):
     return photo_name
 
 
-async def download_avatar(bot: Bot, chat_id, user_id):
+async def download_avatar(bot: Bot, user_id: int):
     path_to_avatar = f'users_logos/{user_id}.png'
     try:
         photos = await bot.get_user_profile_photos(user_id)
@@ -30,14 +31,8 @@ async def download_avatar(bot: Bot, chat_id, user_id):
 
     except Exception as e:
         print(f'Ошибка при получении аватара \n{e}')
-        # await bot.send_message(chat_id,
-        #                        '❌ Произошла ошибка при получении аватара пользователя!\n'
-        #                        'Возможно это случилось из-за настроек приватности пользователя.\n'
-        #                        'Либо в профиле выбранного пользователя отсутствуют фотографии.')
-
-        # await asyncio.sleep(5)
-        # await er.delete()
-        shutil.copyfile(src=f'users_logos/anonymous.png', dst=path_to_avatar)
+    finally:
+        shutil.copyfile(src='users_logos/anonymous.png', dst=path_to_avatar)
 
     return path_to_avatar
 

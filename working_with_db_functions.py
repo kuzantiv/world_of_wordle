@@ -23,7 +23,3 @@ def get_words_that_have_examples(path_to_db):
                             ).fetchall()
 
         return records
-
-
-# for i in enumerate(get_words_that_have_examples('../words_with_sentence_examples.db')):
-#     print(i)
