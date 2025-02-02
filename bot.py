@@ -1,24 +1,28 @@
+import asyncio
 import logging
 import os
 import random
-import sqlite3
 import time
 from collections import Counter
 from enum import Enum
 
+from aiogram import Dispatcher, types, F
+from aiogram import filters
+from aiogram.types.input_file import FSInputFile
+from dotenv import load_dotenv
+
 import keyboards as kb
-from PIL import ImageFont
-from aiogram import Dispatcher, executor, types
-from aiogram.dispatcher import filters
 from image_handling import *
 from working_with_db_functions import *
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 
-# Initialize bot and dispatcher
-bot = Bot(token=os.environ['API_TOKEN'])
-dp = Dispatcher(bot)
+load_dotenv()  # Загружает переменные из .env
+
+token = os.getenv('API_TOKEN')
+
+bot = Bot(token)
+dp = Dispatcher()
 
 initial_tries = 6
 games = {}
@@ -31,6 +35,7 @@ class Hint(Enum):
 
 
 keyboard = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+dictionary = {}
 
 
 # ===============================================
@@ -189,15 +194,18 @@ def draw_picture(chat_id, guesses_text, keyboard_text):
     return photo_name
 
 
-@dp.callback_query_handler(lambda c: c.data == 'button1')
+# New handler style for callbacks
+@dp.callback_query(F.data == "button1")
 async def process_callback_button1(callback_query: types.CallbackQuery):
     word = games[callback_query.message.chat.id]['word']
-    await bot.send_message(callback_query.message.chat.id,
-                           format_example(get_random_example(get_word_id_from_db(word))),
-                           parse_mode='Markdown')
+    await callback_query.answer()  # Always answer callback first
+    await callback_query.message.answer(
+        format_example(get_random_example(get_word_id_from_db(word))),
+        parse_mode='Markdown'
+    )
 
 
-@dp.message_handler(commands=['hint'])
+@dp.message(filters.Command("hint"))
 async def send_help(message: types.Message):
     global games
     word = games[message.chat.id]['word']
@@ -216,12 +224,12 @@ def word_definition(word_def):
             return "\n".join(definitions[0].split("<br>")[1:])
 
 
-@dp.message_handler(filters.CommandStart())
+@dp.message(filters.CommandStart())
 async def send_start(message: types.Message):
     await message.reply(start_game(message.chat.id))
 
 
-@dp.message_handler(commands=['giveup'])
+@dp.message(filters.Command("giveup"))
 async def send_give_up(message: types.Message):
     word = games[message.chat.id]['word']
     await bot.send_message(message.chat.id,
@@ -231,7 +239,7 @@ async def send_give_up(message: types.Message):
     await message.reply(start_game(message.chat.id))
 
 
-@dp.message_handler(filters.CommandHelp())
+@dp.message(filters.Command("help"))
 async def send_help(message: types.Message):
     await message.reply("""
 Привет 🙋. Я СЛОВЛ
@@ -245,13 +253,15 @@ async def send_help(message: types.Message):
     """)
 
 
-@dp.message_handler(commands=['gifinstruction'])
+@dp.message(filters.Command("gifinstruction"))
 async def send_help(message: types.Message):
-    await bot.send_video(message.chat.id,
-                         open('video_instruction.mp4', 'rb'))
+    # Open the file in binary mode and pass it directly
+    video_path = "video_instruction.mp4"
+    video_file = FSInputFile(video_path)
+    await bot.send_video(message.chat.id, video_file)
 
 
-@dp.message_handler(commands=['about'])
+@dp.message(filters.Command("about"))
 async def send_help(message: types.Message):
     await message.answer("""
 @kuzantiv - Founder
@@ -261,8 +271,8 @@ Github - https://github.com/kuzantiv
     """)
 
 
-@dp.message_handler(commands=['g', 'у'])
-@dp.message_handler(filters.IsReplyFilter(True))
+@dp.message(filters.Command("g") or filters.Command("у"))
+@dp.message(F.reply_to_message)
 async def send_guess(message: types.Message):
     global games, dictionary
     word = games[message.chat.id]['word']
@@ -282,10 +292,10 @@ async def send_guess(message: types.Message):
         draw_winner_name(chat_id=message.chat.id,
                          user_full_name=message.from_user.full_name,
                          user_id=message.from_user.id)
-        with open(f'last_winners/last_winner_pic_chat'
-                  f'{message.chat.id}user'
-                  f'{message.from_user.id}.jpg', "rb") as photo:
-            await bot.send_photo(message.chat.id, photo)
+        file_path = f'last_winners/last_winner_pic_chat{message.chat.id}user{message.from_user.id}.jpg'
+        input_file = FSInputFile(file_path)
+        await bot.send_photo(message.chat.id, input_file)
+
         await message.reply(start_game(message.chat.id))
     elif tries == 1:
         await bot.send_message(message.chat.id,
@@ -327,17 +337,23 @@ async def send_guess(message: types.Message):
         resize_picture(path_to_downloaded_avatar)
         insert_users_logo(result_pic, message.chat.id, players)
 
-        with open(f'result{message.chat.id}.png', "rb") as photo:
-            message = await bot.send_photo(message.chat.id, photo)
-            await message.answer("Если сложно, нажимай",
-                                 reply_markup=kb.inline_kb1)
-            if games[message.chat.id]['photo']:
-                await bot.delete_message(message.chat.id,
-                                         games[message.chat.id]['photo'])
-            games[message.chat.id]['photo'] = message.message_id
+        photo = f'result{message.chat.id}.png'
+        photo_f = FSInputFile(photo, photo)
+        message = await bot.send_photo(message.chat.id, photo_f)
+        await message.answer("Если сложно, нажимай",
+                             reply_markup=kb.inline_kb1)
+        if games[message.chat.id]['photo']:
+            await bot.delete_message(message.chat.id,
+                                     games[message.chat.id]['photo'])
+        games[message.chat.id]['photo'] = message.message_id
         os.remove(f'result{message.chat.id}.png')
 
 
-if __name__ == '__main__':
+async def main():
+    global dictionary
     dictionary = get_words_that_have_examples('words_with_sentence_examples.db')
-    executor.start_polling(dp, skip_updates=True)
+    await dp.start_polling(bot, skip_updates=True)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

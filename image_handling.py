@@ -23,9 +23,10 @@ def draw_winner_name(chat_id, user_full_name, user_id):
 async def download_avatar(bot: Bot, chat_id, user_id):
     path_to_avatar = f'users_logos/{user_id}.png'
     try:
-        a = await bot.get_user_profile_photos(user_id)
-        photo = a.photos[0][1].file_id
-        await bot.download_file_by_id(photo, path_to_avatar)
+        photos = await bot.get_user_profile_photos(user_id)
+        photo_id = photos.photos[0][1].file_id
+        file = await bot.get_file(photo_id)
+        await bot.download_file(file.file_path, path_to_avatar)
 
     except Exception as e:
         print(f'Ошибка при получении аватара \n{e}')

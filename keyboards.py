@@ -1,5 +1,4 @@
-# keyboards.py
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-inline_btn_1 = InlineKeyboardButton('Подсказка', callback_data='button1')
-inline_kb1 = InlineKeyboardMarkup().add(inline_btn_1)
+inline_btn_1 = InlineKeyboardButton(text='Подсказка', callback_data='button1')
+inline_kb1 = InlineKeyboardMarkup(inline_keyboard=[[inline_btn_1]])
