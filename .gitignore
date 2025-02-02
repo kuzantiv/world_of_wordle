@@ -1,5 +1,5 @@
 # folders
-venv/
+.venv/
 .idea/
 users_logos/
 last_winners/
