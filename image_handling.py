@@ -9,8 +9,10 @@ def draw_winner_name(chat_id, user_full_name, user_id):
     img = Image.open("last_winners/winner_backgraund_tamplate.jpg")
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("fonts/Jetbrainsmonobold.ttf", 350)
-    first_name = user_full_name.split()[0]
-    last_name = user_full_name.split()[1]
+
+    name_parts = user_full_name.split()
+    first_name = name_parts[0]
+    last_name = name_parts[1] if len(name_parts) > 1 else ""
 
     draw.text((2500, 2000), first_name, (255, 255, 255), font=font)
     draw.text((2500, 2500), last_name, (255, 255, 255), font=font)
