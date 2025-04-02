@@ -1,13 +1,35 @@
-.git
+# Git
+.git/
 .gitignore
-.env
-.venv
-__pycache__
+
+# IDE и кеши
+.idea/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
+
+# Локальные настройки и окружение
+.env
+.dockerenv
+.venv
 env/
+
+# Документация и инструкции
 README.md
-docker-compose.yml
+QR of bot link.png
+env_example
+
+# Файлы Docker
+.dockerignore
 compose.yml
+docker-compose.yml
+
+# Линтеры и статический анализ
+.flake8
+.pylintrc
+
+# Пользовательские данные (будут монтироваться)
+last_winners/
+users_logos/

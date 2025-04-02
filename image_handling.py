@@ -6,7 +6,7 @@ from aiogram import Bot
 
 
 def draw_winner_name(chat_id, user_full_name, user_id):
-    img = Image.open("last_winners/winner_backgraund_tamplate.jpg")
+    img = Image.open("winner_backgraund_tamplate.jpg")
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("fonts/Jetbrainsmonobold.ttf", 350)
 
