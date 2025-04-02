@@ -1,8 +1,9 @@
 services:
   wordle-bot:
     build: .
+    env_file:
+      - .env
     volumes:
       - ./users_logos:/app/users_logos
-      - ./.env:/app/.env
       - ./d_base.db:/app/d_base.db
     restart: always

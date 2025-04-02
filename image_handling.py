@@ -34,7 +34,7 @@ async def download_avatar(bot: Bot, user_id: int):
     except Exception as e:
         print(f'Ошибка при получении аватара \n{e}')
     finally:
-        shutil.copyfile(src='users_logos/anonymous.png', dst=path_to_avatar)
+        shutil.copyfile(src='anonymous.png', dst=path_to_avatar)
 
     return path_to_avatar
 
